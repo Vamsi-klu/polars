@@ -150,21 +150,8 @@ def test_duration_std_var() -> None:
         {"duration": [1000, 5000, 3000]}, schema={"duration": pl.Duration}
     )
 
-    result = df.select(
-        pl.col("duration").std().name.suffix("_std"),
-    )
-
-    expected = pl.DataFrame(
-        [
-            pl.Series(
-                "duration_std",
-                [timedelta(microseconds=2000)],
-                dtype=pl.Duration(time_unit="us"),
-            ),
-        ]
-    )
-
-    assert_frame_equal(result, expected)
+    with pytest.raises(pl.exceptions.InvalidOperationError):
+        df.select(pl.col("duration").std())
 
     with pytest.raises(pl.exceptions.InvalidOperationError):
         df.select(pl.col("duration").var())
@@ -172,7 +159,10 @@ def test_duration_std_var() -> None:
 
 def test_series_duration_std_var() -> None:
     s = pl.Series([timedelta(days=1), timedelta(days=2), timedelta(days=4)])
-    assert s.std() == timedelta(days=1, seconds=45578, microseconds=180014)
+
+    with pytest.raises(pl.exceptions.InvalidOperationError):
+        s.std()
+
     with pytest.raises(pl.exceptions.InvalidOperationError):
         s.var()
 
