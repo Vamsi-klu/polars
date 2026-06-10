@@ -639,7 +639,6 @@ impl LazyFrame {
                 if self.opt_state.eager() || is_scan_with_rechunk(&self.logical_plan) {
                     Engine::InMemory
                 } else {
-                    self.opt_state |= OptFlags::AUTO_SELECTED_STREAMING;
                     Engine::Streaming
                 }
             },
@@ -649,8 +648,6 @@ impl LazyFrame {
         if engine != Engine::Streaming
             && std::env::var("POLARS_AUTO_STREAMING").as_deref() == Ok("1")
         {
-            self.opt_state |= OptFlags::AUTO_SELECTED_STREAMING;
-
             feature_gated!("streaming", {
                 if let Some(r) = self.clone()._collect_with_streaming_suppress_todo_panic() {
                     return r;

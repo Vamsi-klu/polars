@@ -62,6 +62,5 @@ flag_getter_setters! {
 
     (EAGER, get_eager, set_eager, clear=true)
     (STREAMING, get_streaming, set_streaming, clear=true)
-    (AUTO_SELECTED_STREAMING, get_auto_selected_streaming, set_auto_selected_streaming, clear=true)
     (GPU, get_gpu, set_gpu, clear=true)
 }

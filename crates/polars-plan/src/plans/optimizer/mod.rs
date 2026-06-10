@@ -1,7 +1,6 @@
 use polars_core::prelude::*;
 use polars_error::feature_gated;
 
-use crate::plans::optimizer::force_maintain_order_join::ForceMaintainOrderJoin;
 use crate::plans::optimizer::parquet_metadata_prune::prune_parquet_metadata;
 use crate::plans::optimizer::projection_pushdown::projection_pushdown;
 use crate::prelude::*;
@@ -16,7 +15,6 @@ mod cse;
 #[cfg(feature = "merge_sorted")]
 mod flatten_merge_sorted;
 mod flatten_union;
-mod force_maintain_order_join;
 #[cfg(feature = "fused")]
 mod fused;
 mod join_utils;
@@ -135,10 +133,6 @@ pub fn optimize(
         () => {
             _get_or_init_members(_opt_members, root, ir_arena, expr_arena)
         };
-    }
-
-    if opt_flags.contains(OptFlags::AUTO_SELECTED_STREAMING) {
-        rules.push(Box::new(ForceMaintainOrderJoin));
     }
 
     // Run before slice pushdown
