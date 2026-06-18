@@ -82,16 +82,11 @@ mod tests {
         let mut prev_n_parts: u64 = 0;
 
         let boundaries = (0..1000u64)
-            .filter_map(|i| {
-                let n_parts = calc_n_parts(i, const { NonZeroU64::new(100).unwrap() });
-
-                if n_parts == prev_n_parts {
-                    return None;
-                };
-
+            .filter(|i| {
+                let n_parts = calc_n_parts(*i, const { NonZeroU64::new(100).unwrap() });
+                let changed = n_parts != prev_n_parts;
                 prev_n_parts = n_parts;
-
-                Some(i)
+                changed
             })
             .collect::<Vec<_>>();
 
