@@ -215,10 +215,13 @@ impl TargetSinkMorselSize {
             && self.target_num_rows_mode != SplitMode::Exact
             && part_sizes_iter.base_part_size().checked_mul(2).is_some_and(
                 |double_base_part_size| {
-                    double_base_part_size.abs_diff(idxsize_to_u64(self.target_num_rows.get()))
-                        < part_sizes_iter
-                            .base_part_size()
-                            .abs_diff(idxsize_to_u64(self.target_num_rows.get()))
+                    u64::abs_diff(
+                        double_base_part_size,
+                        idxsize_to_u64(self.target_num_rows.get()),
+                    ) < u64::abs_diff(
+                        part_sizes_iter.base_part_size(),
+                        idxsize_to_u64(self.target_num_rows.get()),
+                    )
                 },
             )
         {
