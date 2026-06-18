@@ -11,6 +11,7 @@ impl DfWithOffset {
         Self { df, offset: 0 }
     }
 
+    /// Note: This performs a linear scan across chunks on each call.
     pub fn split_off_front(&mut self, n_rows: usize) -> DataFrame {
         let ret = self.df.slice(self.offset as i64, n_rows);
         self.offset += n_rows;

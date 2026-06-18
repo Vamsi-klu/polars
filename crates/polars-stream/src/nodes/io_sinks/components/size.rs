@@ -215,11 +215,13 @@ impl TargetSinkMorselSize {
             && self.target_num_rows_mode != SplitMode::Exact
             && part_sizes_iter
                 .base_part_size()
-                .abs_diff(self.target_num_rows.get() as u64)
-                < part_sizes_iter
-                    .base_part_size()
-                    .saturating_mul(2)
-                    .abs_diff(self.target_num_rows.get() as u64)
+                .checked_mul(2)
+                .is_none_or(|double_base_part_size| {
+                    part_sizes_iter
+                        .base_part_size()
+                        .abs_diff(self.target_num_rows.get() as u64)
+                        < double_base_part_size.abs_diff(self.target_num_rows.get() as u64)
+                })
         {
             // Wait for more data to have a fuller chunk.
             part_sizes_iter = PartSizesIter::default()
@@ -249,7 +251,7 @@ impl TargetSinkMorselSize {
                 (size.num_rows / self.target_num_bytes_min_rows.get()) as _,
                 calc_n_parts(
                     size.num_bytes,
-                    #[cfg_attr(feature = "bigidx", expect(clippy:unnecessary_cast))]
+                    #[cfg_attr(feature = "bigidx", expect(clippy::unnecessary_cast))]
                     NonZeroU64::new(self.target_num_bytes.get() as u64).unwrap(),
                 ),
             )
