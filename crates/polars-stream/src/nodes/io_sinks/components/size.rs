@@ -249,16 +249,7 @@ impl TargetSinkMorselSize {
         if self.target_num_bytes.get() != u64::MAX {
             n_parts_by_num_bytes = u64::min(
                 (size.num_rows / self.target_num_bytes_min_rows.get()) as _,
-                calc_n_parts(
-                    size.num_bytes,
-                    NonZeroU64::new(
-                        #[cfg_attr(feature = "bigidx", expect(clippy::unnecessary_cast))]
-                        {
-                            self.target_num_bytes.get() as u64
-                        },
-                    )
-                    .unwrap(),
-                ),
+                calc_n_parts(size.num_bytes, self.target_num_bytes),
             )
         };
 
