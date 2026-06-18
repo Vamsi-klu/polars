@@ -213,15 +213,14 @@ impl TargetSinkMorselSize {
 
         if part_sizes_iter.len() <= 1
             && self.target_num_rows_mode != SplitMode::Exact
-            && part_sizes_iter
-                .base_part_size()
-                .checked_mul(2)
-                .is_none_or(|double_base_part_size| {
-                    part_sizes_iter
-                        .base_part_size()
-                        .abs_diff(idxsize_to_u64(self.target_num_rows.get()))
-                        < double_base_part_size.abs_diff(idxsize_to_u64(self.target_num_rows.get()))
-                })
+            && part_sizes_iter.base_part_size().checked_mul(2).is_some_and(
+                |double_base_part_size| {
+                    double_base_part_size.abs_diff(idxsize_to_u64(self.target_num_rows.get()))
+                        < part_sizes_iter
+                            .base_part_size()
+                            .abs_diff(idxsize_to_u64(self.target_num_rows.get()))
+                },
+            )
         {
             // Wait for more data to have a fuller chunk.
             part_sizes_iter = PartSizesIter::default()
