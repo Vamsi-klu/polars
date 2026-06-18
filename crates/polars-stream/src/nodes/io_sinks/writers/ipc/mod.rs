@@ -62,7 +62,7 @@ impl FileWriterStarter for IpcWriterStarter {
             TargetSinkMorselSize {
                 target_num_rows: env_num_rows
                     .unwrap_or(const { NonZeroIdxSize::new(122_880).unwrap() }),
-                target_num_bytes: env_num_bytes.unwrap_or(NonZeroU64::MAX).try_into().unwrap(),
+                target_num_bytes: env_num_bytes.unwrap_or(NonZeroU64::MAX),
                 target_num_bytes_min_rows,
                 target_num_rows_mode: SplitMode::Approximate,
             }
