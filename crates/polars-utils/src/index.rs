@@ -19,7 +19,7 @@ pub fn idxsize_to_u64(val: IdxSize) -> u64 {
     }
     #[cfg(not(feature = "bigidx"))]
     {
-        val as u64
+        val.into()
     }
 }
 
