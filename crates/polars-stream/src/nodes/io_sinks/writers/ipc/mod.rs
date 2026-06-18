@@ -57,11 +57,12 @@ impl FileWriterStarter for IpcWriterStarter {
                 target_num_rows_mode: SplitMode::Exact,
             }
         } else {
-            let (num_rows, num_bytes) = ideal_sink_morsel_size_env();
+            let (env_num_rows, env_num_bytes) = ideal_sink_morsel_size_env();
 
             TargetSinkMorselSize {
-                target_num_rows: num_rows.unwrap_or(122_880).try_into().unwrap(),
-                target_num_bytes: num_bytes.unwrap_or(u64::MAX).try_into().unwrap(),
+                target_num_rows: env_num_rows
+                    .unwrap_or(const { NonZeroIdxSize::new(122_880).unwrap() }),
+                target_num_bytes: env_num_bytes.unwrap_or(NonZeroU64::MAX).try_into().unwrap(),
                 target_num_bytes_min_rows,
                 target_num_rows_mode: SplitMode::Approximate,
             }

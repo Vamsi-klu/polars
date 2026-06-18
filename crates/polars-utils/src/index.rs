@@ -10,6 +10,18 @@ pub type IdxSize = u32;
 #[cfg(feature = "bigidx")]
 pub type IdxSize = u64;
 
+#[inline]
+pub fn idxsize_to_u64(val: IdxSize) -> u64 {
+    #[cfg(feature = "bigidx")]
+    {
+        val
+    }
+    #[cfg(not(feature = "bigidx"))]
+    {
+        val as u64
+    }
+}
+
 #[cfg(not(feature = "bigidx"))]
 pub type NonZeroIdxSize = std::num::NonZeroU32;
 #[cfg(feature = "bigidx")]

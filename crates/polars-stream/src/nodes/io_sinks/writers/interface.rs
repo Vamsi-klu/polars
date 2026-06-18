@@ -6,7 +6,6 @@ use polars_async::primitives::connector;
 use polars_error::PolarsResult;
 use polars_io::utils::file::Writeable;
 use polars_io::utils::sync_on_close::SyncOnCloseType;
-use polars_utils::IdxSize;
 use polars_utils::index::NonZeroIdxSize;
 use polars_utils::pl_str::PlSmallStr;
 
@@ -65,31 +64,25 @@ impl std::future::Future for FileOpenTaskHandle {
 }
 
 /// Load ideal morsel size configuration from environment variables.
-pub(super) fn ideal_sink_morsel_size_env() -> (Option<IdxSize>, Option<u64>) {
+pub(super) fn ideal_sink_morsel_size_env() -> (Option<NonZeroIdxSize>, Option<NonZeroU64>) {
     let num_rows = std::env::var("POLARS_IDEAL_SINK_MORSEL_SIZE_ROWS")
         .map(|x| {
-            x.parse::<NonZeroIdxSize>()
-                .ok()
-                .unwrap_or_else(|| {
-                    panic!("invalid value for POLARS_IDEAL_SINK_MORSEL_SIZE_ROWS: {x}")
-                })
-                .get()
+            x.parse::<NonZeroIdxSize>().ok().unwrap_or_else(|| {
+                panic!("invalid value for POLARS_IDEAL_SINK_MORSEL_SIZE_ROWS: {x}")
+            })
         })
         .ok();
 
     let num_bytes = std::env::var("POLARS_IDEAL_SINK_MORSEL_SIZE_BYTES")
         .map(|x| {
-            x.parse::<NonZeroU64>()
-                .ok()
-                .unwrap_or_else(|| {
-                    panic!("invalid value for POLARS_IDEAL_SINK_MORSEL_SIZE_BYTES: {x}")
-                })
-                .get()
+            x.parse::<NonZeroU64>().ok().unwrap_or_else(|| {
+                panic!("invalid value for POLARS_IDEAL_SINK_MORSEL_SIZE_BYTES: {x}")
+            })
         })
         .ok();
 
     (
         num_rows,
-        num_bytes.or(num_rows.is_some().then_some(u64::MAX)),
+        num_bytes.or(num_rows.is_some().then_some(NonZeroU64::MAX)),
     )
 }

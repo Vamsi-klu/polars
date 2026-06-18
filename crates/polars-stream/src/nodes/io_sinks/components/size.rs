@@ -4,7 +4,7 @@ use polars_core::frame::DataFrame;
 use polars_error::{PolarsResult, polars_err};
 use polars_utils::IdxSize;
 use polars_utils::calc_morsel_split::{PartSizesIter, calc_n_parts};
-use polars_utils::index::NonZeroIdxSize;
+use polars_utils::index::{NonZeroIdxSize, idxsize_to_u64};
 
 #[derive(Copy, Clone, Debug, Default, PartialEq)]
 pub struct RowCountAndSize {
@@ -205,7 +205,7 @@ impl TargetSinkMorselSize {
         if incoming_size.num_rows != 0
             && part_sizes_iter.len() > 1
             && (self.target_num_rows_mode != SplitMode::Exact
-                || part_sizes_iter.base_part_size() != self.target_num_rows.get() as u64)
+                || part_sizes_iter.base_part_size() != idxsize_to_u64(self.target_num_rows.get()))
         {
             flush_buffered_as_one_split = buffered_size.num_rows != 0;
             part_sizes_iter = self.build_part_sizes_iter(incoming_size);
@@ -219,8 +219,8 @@ impl TargetSinkMorselSize {
                 .is_none_or(|double_base_part_size| {
                     part_sizes_iter
                         .base_part_size()
-                        .abs_diff(self.target_num_rows.get() as u64)
-                        < double_base_part_size.abs_diff(self.target_num_rows.get() as u64)
+                        .abs_diff(idxsize_to_u64(self.target_num_rows.get()))
+                        < double_base_part_size.abs_diff(idxsize_to_u64(self.target_num_rows.get()))
                 })
         {
             // Wait for more data to have a fuller chunk.
@@ -236,11 +236,14 @@ impl TargetSinkMorselSize {
         }
 
         let n_parts_by_num_rows = if self.target_num_rows_mode == SplitMode::Exact {
-            u64::max(1, (size.num_rows / self.target_num_rows.get()) as u64)
+            u64::max(
+                1,
+                idxsize_to_u64(size.num_rows / self.target_num_rows.get()),
+            )
         } else {
             calc_n_parts(
-                size.num_rows as u64,
-                NonZeroU64::new(self.target_num_rows.get() as u64).unwrap(),
+                idxsize_to_u64(size.num_rows),
+                NonZeroU64::new(idxsize_to_u64(self.target_num_rows.get())).unwrap(),
             )
         };
 
@@ -261,12 +264,12 @@ impl TargetSinkMorselSize {
             }
 
             PartSizesIter::new_from_part_size(
-                self.target_num_rows.get() as u64,
+                idxsize_to_u64(self.target_num_rows.get()),
                 n_parts_by_num_rows as usize,
             )
         } else {
             PartSizesIter::new_from_total_size(
-                size.num_rows as u64,
+                idxsize_to_u64(size.num_rows),
                 u64::max(n_parts_by_num_rows, n_parts_by_num_bytes) as usize,
             )
         }

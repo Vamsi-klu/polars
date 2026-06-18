@@ -10,6 +10,7 @@ use polars_core::schema::Schema;
 use polars_error::PolarsResult;
 use polars_utils::IdxSize;
 use polars_utils::calc_morsel_split::PartSizesIter;
+use polars_utils::index::idxsize_to_u64;
 use polars_utils::itertools::iters_eq::iters_eq;
 
 use crate::morsel::Morsel;
@@ -89,7 +90,7 @@ impl MorselResizePipeline {
                         take_n_rows_from_buffered(
                             Arc::clone(&schema),
                             &mut buffered_rows,
-                            logical_buffered_size.num_rows as u64,
+                            idxsize_to_u64(logical_buffered_size.num_rows),
                         ),
                         acquire_morsel_permit.await,
                     )
@@ -159,7 +160,7 @@ impl MorselResizePipeline {
                     take_n_rows_from_buffered(
                         Arc::clone(&schema),
                         &mut buffered_rows,
-                        logical_buffered_size.num_rows as u64,
+                        idxsize_to_u64(logical_buffered_size.num_rows),
                     ),
                     acquire_morsel_permit.await,
                 )
