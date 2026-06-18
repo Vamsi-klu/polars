@@ -11,7 +11,7 @@ use polars_utils::index::NonZeroIdxSize;
 use crate::morsel::get_ideal_morsel_size;
 use crate::nodes::io_sinks::components::sink_morsel::{SinkMorsel, SinkMorselPermit};
 use crate::nodes::io_sinks::components::size::{
-    NonZeroRowCountAndSize, RowCountAndSize, TakeableRowsProvider,
+    NonZeroRowCountAndSize, RowCountAndSize, SplitMode, TargetSinkMorselSize,
 };
 use crate::nodes::io_sinks::writers::interface::{
     FileOpenTaskHandle, FileWriterStarter, ideal_sink_morsel_size_env,
@@ -80,11 +80,14 @@ impl FileWriterStarter for NDJsonWriterStarter {
         "ndjson"
     }
 
-    fn takeable_rows_provider(&self) -> TakeableRowsProvider {
-        TakeableRowsProvider {
-            max_size: self.initialized_state().ideal_morsel_size,
-            byte_size_min_rows: NonZeroIdxSize::new(256).unwrap(),
-            allow_non_max_size: true,
+    fn target_sink_morsel_size(&self) -> TargetSinkMorselSize {
+        let ideal_morsel_size = self.initialized_state().ideal_morsel_size;
+
+        TargetSinkMorselSize {
+            target_num_rows: ideal_morsel_size.num_rows,
+            target_num_bytes: ideal_morsel_size.num_bytes,
+            target_num_bytes_min_rows: const { NonZeroIdxSize::new(256).unwrap() },
+            target_num_rows_mode: SplitMode::Approximate,
         }
     }
 

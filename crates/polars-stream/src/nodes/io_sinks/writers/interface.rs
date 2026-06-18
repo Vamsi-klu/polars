@@ -11,7 +11,7 @@ use polars_utils::index::NonZeroIdxSize;
 use polars_utils::pl_str::PlSmallStr;
 
 use crate::nodes::io_sinks::components::sink_morsel::SinkMorsel;
-use crate::nodes::io_sinks::components::size::TakeableRowsProvider;
+use crate::nodes::io_sinks::components::size::TargetSinkMorselSize;
 use crate::utils::tokio_handle_ext;
 
 pub const IPC_RW_RECORD_BATCH_FLAGS_KEY: PlSmallStr =
@@ -21,7 +21,7 @@ pub trait FileWriterStarter: Send + Sync + 'static {
     fn writer_name(&self) -> &str;
 
     /// Hints to the sender how morsels should be sized.
-    fn takeable_rows_provider(&self) -> TakeableRowsProvider;
+    fn target_sink_morsel_size(&self) -> TargetSinkMorselSize;
 
     fn start_file_writer(
         &self,
