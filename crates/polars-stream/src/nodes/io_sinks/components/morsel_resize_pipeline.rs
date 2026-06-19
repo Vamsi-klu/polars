@@ -1,11 +1,9 @@
 use std::collections::VecDeque;
 use std::sync::Arc;
 
-use arrow::array::builder::ShareStrategy;
 use polars_async::primitives::connector;
 use polars_async::primitives::wait_group::WaitToken;
 use polars_core::frame::DataFrame;
-use polars_core::frame::builder::DataFrameBuilder;
 use polars_core::schema::Schema;
 use polars_error::PolarsResult;
 use polars_utils::IdxSize;
@@ -200,7 +198,7 @@ fn take_n_rows_from_buffered(
         return DataFrame::empty_with_arc_schema(schema);
     }
 
-    let mut df_builder: Option<DataFrameBuilder> = None;
+    let mut stacked_df: Option<DataFrame> = None;
 
     while n_rows != 0 {
         let next_df = buffered_rows.front_mut().unwrap();
@@ -211,20 +209,21 @@ fn take_n_rows_from_buffered(
             buffered_rows.pop_front().unwrap().into_df()
         };
 
-        if next_df.height() as u64 == n_rows && df_builder.is_none() {
+        if next_df.height() as u64 == n_rows && stacked_df.is_none() {
             return next_df;
         }
 
-        df_builder
-            .get_or_insert_with(|| {
-                let mut builder = DataFrameBuilder::new(Arc::clone(&schema));
-                builder.reserve(n_rows as usize);
-                builder
-            })
-            .extend(&next_df, ShareStrategy::Always);
+        let next_df_height = next_df.height();
 
-        n_rows -= next_df.height() as u64;
+        match stacked_df.as_mut() {
+            Some(df) => {
+                df.vstack_mut_owned_unchecked(next_df);
+            },
+            None => stacked_df = Some(next_df),
+        };
+
+        n_rows -= next_df_height as u64;
     }
 
-    df_builder.unwrap().freeze()
+    stacked_df.unwrap()
 }
