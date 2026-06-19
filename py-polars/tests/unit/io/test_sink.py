@@ -507,3 +507,30 @@ def test_sink_morsel_splitting_without_user_configuration(
         ]
 
     assert record_batch_lengths == expected_written_chunk_lengths
+
+
+@pytest.mark.parametrize(
+    ("input_chunk_lengths", "expected_written_chunk_lengths"),
+    [
+        ([250_000, 250_000], [122_880, 122_880, 122_880, 122_880, 8480]),
+    ],
+)
+def test_sink_morsel_splitting_with_user_configuration(
+    input_chunk_lengths: list[int],
+    expected_written_chunk_lengths: list[int],
+) -> None:
+    # We must split exactly when the user requests a specific record batch size,
+    # even if this causes the morsels to span across chunk boundaries.
+    buf = io.BytesIO()
+
+    df = pl.concat([pl.select(pl.repeat(1, n)) for n in input_chunk_lengths])
+    assert df.to_series(0).chunk_lengths() == input_chunk_lengths
+
+    df.write_ipc(buf, record_batch_size=122_880)
+
+    with pyarrow.ipc.open_file(buf) as f:
+        record_batch_lengths = [
+            f.get_record_batch(i).num_rows for i in range(f.num_record_batches)
+        ]
+
+    assert record_batch_lengths == expected_written_chunk_lengths
