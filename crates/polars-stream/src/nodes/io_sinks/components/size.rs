@@ -209,6 +209,8 @@ impl TargetSinkMorselSize {
         let mut flush_buffered_as_one_split = false;
         let (mut part_sizes_iter, mut limited_by) = self.build_part_sizes_iter(combined_size);
 
+        // Note: We assume the buffered amount `buffered_size` does not exceed the configured target
+        // sizes (i.e., it should always be a residual of the target size).
         if incoming_size.num_rows != 0
             && part_sizes_iter.len() > 1
             && (self.target_num_rows_mode != SplitMode::Exact
