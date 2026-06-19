@@ -117,7 +117,7 @@ impl MorselResizePipeline {
                     && {
                         let avg_chunk_size = df.height() / first_s.chunk_lengths().len();
 
-                        // avg_chunk_size >= 0.66 * target_num_rows
+                        // avg_chunk_size >= (2/3) * target_num_rows
                         avg_chunk_size
                             .checked_mul(2)
                             .is_none_or(|double_avg_chunk_size| {
