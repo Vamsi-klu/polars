@@ -519,19 +519,12 @@ def test_sink_morsel_splitting_without_user_configuration(
     input_chunk_lengths: list[int],
     expected_written_chunk_lengths: list[int],
 ) -> None:
-    buf = io.BytesIO()
-
-    dfs = (
-        pl.Series("x", [1], dtype=pl.UInt8).new_from_index(0, n).to_frame()
-        for n in input_chunk_lengths
-    )
-    df = next(dfs)
-
-    for other_df in dfs:
-        df = df.vstack(other_df)
+    s = pl.Series("x", [1], dtype=pl.UInt8)
+    df = pl.concat(s.new_from_index(0, n) for n in input_chunk_lengths).to_frame()
 
     assert df.to_series(0).chunk_lengths() == input_chunk_lengths
 
+    buf = io.BytesIO()
     df.write_ipc(buf)
 
     with pyarrow.ipc.open_file(buf) as f:
@@ -552,21 +545,15 @@ def test_sink_morsel_splitting_with_user_configuration(
     input_chunk_lengths: list[int],
     expected_written_chunk_lengths: list[int],
 ) -> None:
-    # We must split exactly when the user requests a specific record batch size,
-    # even if this causes the morsels to span across chunk boundaries.
-    buf = io.BytesIO()
 
-    dfs = (
-        pl.Series("x", [1], dtype=pl.UInt8).new_from_index(0, n).to_frame()
-        for n in input_chunk_lengths
-    )
-    df = next(dfs)
-
-    for other_df in dfs:
-        df = df.vstack(other_df)
+    s = pl.Series("x", [1], dtype=pl.UInt8)
+    df = pl.concat(s.new_from_index(0, n) for n in input_chunk_lengths).to_frame()
 
     assert df.to_series(0).chunk_lengths() == input_chunk_lengths
 
+    # We must split exactly when the user requests a specific record batch size,
+    # even if this causes the morsels to span across chunk boundaries.
+    buf = io.BytesIO()
     df.write_ipc(buf, record_batch_size=122_880)
 
     with pyarrow.ipc.open_file(buf) as f:
