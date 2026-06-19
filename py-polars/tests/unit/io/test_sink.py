@@ -521,7 +521,9 @@ def test_sink_morsel_splitting_without_user_configuration(
 ) -> None:
     buf = io.BytesIO()
 
-    df = pl.concat([pl.select(pl.repeat(1, n)) for n in input_chunk_lengths])
+    df = pl.concat(
+        [pl.select(pl.repeat(1, n, dtype=pl.UInt8)) for n in input_chunk_lengths]
+    )
     assert df.to_series(0).chunk_lengths() == input_chunk_lengths
 
     df.write_ipc(buf)
