@@ -11,17 +11,19 @@ pub type IdxSize = u32;
 pub type IdxSize = u64;
 
 /// Avoids clippy::unnecessary_cast when compiling with bigidx enabled.
-#[cfg(feature = "bigidx")]
 #[inline]
-pub const fn idxsize_to_u64(val: u64) -> u64 {
-    val
-}
-
-/// Avoids clippy::unnecessary_cast when compiling with bigidx enabled.
-#[cfg(not(feature = "bigidx"))]
-#[inline]
-pub const fn idxsize_to_u64(val: u32) -> u64 {
-    val as u64
+pub const fn idxsize_to_u64(
+    #[cfg(feature = "bigidx")] val: u64,
+    #[cfg(not(feature = "bigidx"))] val: u32,
+) -> u64 {
+    #[cfg(feature = "bigidx")]
+    {
+        val
+    }
+    #[cfg(not(feature = "bigidx"))]
+    {
+        val as u64
+    }
 }
 
 #[cfg(not(feature = "bigidx"))]
