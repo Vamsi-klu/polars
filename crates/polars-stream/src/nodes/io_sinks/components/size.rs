@@ -210,11 +210,11 @@ impl TargetSinkMorselSize {
         let (mut part_sizes_iter, mut limited_by) = self.build_part_sizes_iter(combined_size);
 
         // Note: We assume the buffered amount `buffered_size` does not exceed the configured target
-        // sizes (i.e., it should always be a residual of the target size).
+        // sizes (i.e., it should always be a residual of the target size as it is what remains
+        // from the last round of sending).
         if incoming_size.num_rows != 0
+            && !(self.target_num_rows_mode == SplitMode::Exact && limited_by == LimitedBy::Rows)
             && part_sizes_iter.len() > 1
-            && (self.target_num_rows_mode != SplitMode::Exact
-                || part_sizes_iter.base_part_size() != idxsize_to_u64(self.target_num_rows.get()))
         {
             flush_buffered_as_one_split = buffered_size.num_rows != 0;
             (part_sizes_iter, limited_by) = self.build_part_sizes_iter(incoming_size);
@@ -269,18 +269,24 @@ impl TargetSinkMorselSize {
             n_parts_by_num_bytes = calc_n_parts(size.num_bytes, self.target_num_bytes);
         };
 
-        if n_parts_by_num_rows >= u64::min(n_parts_by_num_bytes, max_parts_by_num_bytes)
-            && self.target_num_rows_mode == SplitMode::Exact
-        {
-            if size.num_rows < self.target_num_rows.get() {
-                return (PartSizesIter::default(), LimitedBy::default());
-            }
-
+        if n_parts_by_num_rows >= u64::min(n_parts_by_num_bytes, max_parts_by_num_bytes) {
             (
-                PartSizesIter::new_from_part_size(
-                    idxsize_to_u64(self.target_num_rows.get()),
-                    n_parts_by_num_rows as usize,
-                ),
+                match self.target_num_rows_mode {
+                    SplitMode::Approximate => PartSizesIter::new_from_total_size(
+                        idxsize_to_u64(size.num_rows),
+                        n_parts_by_num_rows as usize,
+                    ),
+                    SplitMode::Exact => {
+                        if size.num_rows < self.target_num_rows.get() {
+                            PartSizesIter::default()
+                        } else {
+                            PartSizesIter::new_from_part_size(
+                                idxsize_to_u64(self.target_num_rows.get()),
+                                n_parts_by_num_rows as usize,
+                            )
+                        }
+                    },
+                },
                 LimitedBy::Rows,
             )
         } else {

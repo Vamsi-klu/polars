@@ -7,6 +7,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import TYPE_CHECKING, Any
 
+import pyarrow.ipc
 import pytest
 
 import polars as pl
@@ -471,3 +472,38 @@ def test_sinked_paths_callback(tmp_path: Path) -> None:
             ),
             _sinked_paths_callback=lambda _: None,
         )
+
+
+@pytest.mark.parametrize(
+    ("input_chunk_lengths", "expected_written_chunk_lengths"),
+    [
+        ([0], []),
+        ([1], [1]),
+        ([81_920], [81_920]),
+        ([163_840], [163_840]),
+        ([163_841], [81_921, 81_920]),  # Cutoff @ (4/3)*122_880
+        ([250_000, 250_000], 4 * [125_000]),
+        ([1, 200_000], [1] + 2 * [100_000]),
+        ([81_919, 81_920], [163839]),
+        ([81_920, 81_920], [81_920, 81_920]),
+        ([81_920, 81_921], [81_920, 81_921]),
+        ([81_921, 81_920], [81_921, 81_920]),
+    ],
+)
+def test_sink_morsel_splitting_without_user_configuration(
+    input_chunk_lengths: list[int],
+    expected_written_chunk_lengths: list[int],
+) -> None:
+    buf = io.BytesIO()
+
+    df = pl.concat([pl.select(pl.repeat(1, n)) for n in input_chunk_lengths])
+    assert df.to_series(0).chunk_lengths() == input_chunk_lengths
+
+    df.write_ipc(buf)
+
+    with pyarrow.ipc.open_file(buf) as f:
+        record_batch_lengths = [
+            f.get_record_batch(i).num_rows for i in range(f.num_record_batches)
+        ]
+
+    assert record_batch_lengths == expected_written_chunk_lengths

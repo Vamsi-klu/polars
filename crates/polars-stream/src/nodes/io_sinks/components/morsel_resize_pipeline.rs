@@ -114,26 +114,10 @@ impl MorselResizePipeline {
                 let mut series_iter = df.columns().iter().filter_map(|c| c.as_series());
 
                 if let Some(first_s) = series_iter.next()
-                    && {
-                        let avg_chunk_size = df.height() / first_s.chunk_lengths().len();
-
-                        // avg_chunk_size >= (2/3) * target_num_rows
-                        avg_chunk_size
-                            .checked_mul(2)
-                            .is_none_or(|double_avg_chunk_size| {
-                                IdxSize::abs_diff(
-                                    avg_chunk_size as _,
-                                    target_sink_morsel_size.target_num_rows.get(),
-                                ) < IdxSize::abs_diff(
-                                    double_avg_chunk_size as _,
-                                    target_sink_morsel_size.target_num_rows.get(),
-                                )
-                            })
-                    }
                     && series_iter
                         .all(|other_s| iters_eq(first_s.chunk_lengths(), other_s.chunk_lengths()))
                 {
-                    next_chunk_lengths.extend(first_s.chunk_lengths());
+                    next_chunk_lengths.extend(first_s.chunk_lengths().rev());
                 } else {
                     next_chunk_lengths.push(df.height());
                 }
