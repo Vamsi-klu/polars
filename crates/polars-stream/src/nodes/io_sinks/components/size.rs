@@ -191,6 +191,13 @@ pub struct TargetSinkMorselSize {
     pub target_num_rows_mode: SplitMode,
 }
 
+#[derive(Debug, Default, PartialEq)]
+enum LimitedBy {
+    #[default]
+    Rows,
+    ByteSize,
+}
+
 impl TargetSinkMorselSize {
     pub fn calc_next_splits(
         &self,
@@ -200,7 +207,7 @@ impl TargetSinkMorselSize {
         let combined_size = buffered_size.checked_add(incoming_size).unwrap();
 
         let mut flush_buffered_as_one_split = false;
-        let mut part_sizes_iter = self.build_part_sizes_iter(combined_size);
+        let (mut part_sizes_iter, mut limited_by) = self.build_part_sizes_iter(combined_size);
 
         if incoming_size.num_rows != 0
             && part_sizes_iter.len() > 1
@@ -208,10 +215,11 @@ impl TargetSinkMorselSize {
                 || part_sizes_iter.base_part_size() != idxsize_to_u64(self.target_num_rows.get()))
         {
             flush_buffered_as_one_split = buffered_size.num_rows != 0;
-            part_sizes_iter = self.build_part_sizes_iter(incoming_size);
+            (part_sizes_iter, limited_by) = self.build_part_sizes_iter(incoming_size);
         }
 
-        if part_sizes_iter.len() <= 1
+        if limited_by == LimitedBy::Rows
+            && part_sizes_iter.len() <= 1
             && self.target_num_rows_mode != SplitMode::Exact
             && part_sizes_iter.base_part_size().checked_mul(2).is_some_and(
                 |double_base_part_size| {
@@ -232,9 +240,9 @@ impl TargetSinkMorselSize {
         (flush_buffered_as_one_split, part_sizes_iter)
     }
 
-    fn build_part_sizes_iter(&self, size: RowCountAndSize) -> PartSizesIter {
+    fn build_part_sizes_iter(&self, size: RowCountAndSize) -> (PartSizesIter, LimitedBy) {
         if size.num_rows == 0 {
-            return PartSizesIter::default();
+            return (PartSizesIter::default(), LimitedBy::default());
         }
 
         let n_parts_by_num_rows = if self.target_num_rows_mode == SplitMode::Exact {
@@ -249,30 +257,43 @@ impl TargetSinkMorselSize {
             )
         };
 
+        let mut max_parts_by_num_bytes = 0;
         let mut n_parts_by_num_bytes = 0;
 
         if self.target_num_bytes.get() != u64::MAX {
-            n_parts_by_num_bytes = u64::min(
-                (size.num_rows / self.target_num_bytes_min_rows.get()) as _,
-                calc_n_parts(size.num_bytes, self.target_num_bytes),
-            )
+            max_parts_by_num_bytes =
+                idxsize_to_u64(size.num_rows / self.target_num_bytes_min_rows.get());
+            n_parts_by_num_bytes = calc_n_parts(size.num_bytes, self.target_num_bytes);
         };
 
-        if n_parts_by_num_rows >= n_parts_by_num_bytes
+        if n_parts_by_num_rows >= u64::min(n_parts_by_num_bytes, max_parts_by_num_bytes)
             && self.target_num_rows_mode == SplitMode::Exact
         {
             if size.num_rows < self.target_num_rows.get() {
-                return PartSizesIter::default();
+                return (PartSizesIter::default(), LimitedBy::default());
             }
 
-            PartSizesIter::new_from_part_size(
-                idxsize_to_u64(self.target_num_rows.get()),
-                n_parts_by_num_rows as usize,
+            (
+                PartSizesIter::new_from_part_size(
+                    idxsize_to_u64(self.target_num_rows.get()),
+                    n_parts_by_num_rows as usize,
+                ),
+                LimitedBy::Rows,
             )
         } else {
-            PartSizesIter::new_from_total_size(
-                idxsize_to_u64(size.num_rows),
-                u64::max(n_parts_by_num_rows, n_parts_by_num_bytes) as usize,
+            (
+                if n_parts_by_num_bytes < max_parts_by_num_bytes {
+                    PartSizesIter::new_from_total_size(
+                        idxsize_to_u64(size.num_rows),
+                        n_parts_by_num_bytes as usize,
+                    )
+                } else {
+                    PartSizesIter::new_from_part_size(
+                        idxsize_to_u64(self.target_num_bytes_min_rows.get()),
+                        max_parts_by_num_bytes as usize,
+                    )
+                },
+                LimitedBy::ByteSize,
             )
         }
     }
