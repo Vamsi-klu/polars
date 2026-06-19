@@ -490,6 +490,8 @@ def test_sinked_paths_callback(tmp_path: Path) -> None:
         ([81_920, 81_920], [81_920, 81_920]),
         ([81_920, 81_921], [81_920, 81_921]),
         ([81_921, 81_920], [81_921, 81_920]),
+        # Ideal morsel size is 100_000; ensure we don't split morsels of this size.
+        ([100_000, 100_000, 100_000], [100_000, 100_000, 100_000]),
     ],
 )
 def test_sink_morsel_splitting_without_user_configuration(
