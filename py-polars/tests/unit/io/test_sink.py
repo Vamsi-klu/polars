@@ -509,7 +509,7 @@ def test_sinked_paths_callback(tmp_path: Path) -> None:
         # [tiny, large, tiny, large] from creating too many chunks.
         ([351, 1], [352]),
         ([351, 1, 6474], [6826]),
-        # From 352<>6475 threshold to avoid combining
+        # From 352<>6475 threshold at 3rd chunk prevents combining
         ([351, 1, 6475], [352, 6475]),
         # Ideal morsel size is 100_000; ensure we don't split morsels of this size.
         ([100_000, 100_000, 100_000], [100_000, 100_000, 100_000]),
