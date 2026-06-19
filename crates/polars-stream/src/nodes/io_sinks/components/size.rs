@@ -1,3 +1,4 @@
+use std::cmp;
 use std::num::NonZeroU64;
 
 use polars_core::frame::DataFrame;
@@ -269,7 +270,14 @@ impl TargetSinkMorselSize {
             n_parts_by_num_bytes = calc_n_parts(size.num_bytes, self.target_num_bytes);
         };
 
-        if n_parts_by_num_rows > u64::min(n_parts_by_num_bytes, max_parts_by_num_bytes) {
+        if match u64::cmp(
+            &n_parts_by_num_rows,
+            &u64::min(n_parts_by_num_bytes, max_parts_by_num_bytes),
+        ) {
+            cmp::Ordering::Greater => true,
+            cmp::Ordering::Equal => self.target_num_rows_mode == SplitMode::Exact,
+            cmp::Ordering::Less => false,
+        } {
             (
                 match self.target_num_rows_mode {
                     SplitMode::Approximate => PartSizesIter::new_from_total_size(
