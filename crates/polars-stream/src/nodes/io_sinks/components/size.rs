@@ -215,7 +215,16 @@ impl TargetSinkMorselSize {
         // from the last round of sending).
         if incoming_size.num_rows != 0
             && !(self.target_num_rows_mode == SplitMode::Exact && limited_by == LimitedBy::Rows)
-            && part_sizes_iter.len() > 1
+            && match part_sizes_iter.len() {
+                0 => false,
+                1 => {
+                    incoming_size.num_rows > buffered_size.num_rows
+                        && buffered_size.num_rows != 0
+                        && idxsize_to_u64(incoming_size.num_rows / buffered_size.num_rows)
+                            > idxsize_to_u64(self.target_num_rows.get() / combined_size.num_rows)
+                },
+                _ => true,
+            }
         {
             flush_buffered_as_one_split = buffered_size.num_rows != 0;
             (part_sizes_iter, limited_by) = self.build_part_sizes_iter(incoming_size);

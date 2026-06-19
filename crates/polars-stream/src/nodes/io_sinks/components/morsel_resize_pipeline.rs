@@ -108,6 +108,10 @@ impl MorselResizePipeline {
 
                 (df, _, _, wait_token) = morsel.into_inner();
 
+                if df.height() == 0 {
+                    continue;
+                }
+
                 let morsel_size = RowCountAndSize::new_from_df(&df);
                 physical_received_size = physical_received_size.add(morsel_size)?;
 
