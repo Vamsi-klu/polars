@@ -479,6 +479,8 @@ def test_sinked_paths_callback(tmp_path: Path) -> None:
     [
         ([0], []),
         ([1], [1]),
+        # Note: Following numbers expect a default target sink morsel size (rows)
+        # of 122_880.
         ([81_920], [81_920]),
         ([163_840], [163_840]),
         ([163_841], [81_921, 81_920]),  # Cutoff @ (4/3)*122_880
